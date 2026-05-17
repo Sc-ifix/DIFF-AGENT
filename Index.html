@@ -1,0 +1,1106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Diff Agents</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07090d;
+      --panel: #0f141c;
+      --panel-2: #151c27;
+      --line: #263140;
+      --text: #f4f7fb;
+      --muted: #93a0b2;
+      --accent: #39d98a;
+      --blue: #61a5ff;
+      --warn: #ff9a4b;
+      --radius: 8px;
+      --shadow: 0 24px 90px rgba(0, 0, 0, .42);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background:
+        linear-gradient(180deg, rgba(13, 18, 26, .16), rgba(7, 9, 13, 1) 48%),
+        radial-gradient(circle at 48% 0%, rgba(57, 217, 138, .15), transparent 34rem),
+        radial-gradient(circle at 86% 22%, rgba(97, 165, 255, .11), transparent 28rem),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+
+    .shell {
+      width: min(1400px, calc(100vw - 64px));
+      margin: 0 auto;
+    }
+
+    .nav {
+      min-height: 78px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 900;
+    }
+
+    .mark {
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius);
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--accent), var(--blue));
+      color: #03100a;
+      font-size: 13px;
+      box-shadow: 0 14px 40px rgba(57, 217, 138, .14);
+    }
+
+    .ghost {
+      border: 1px solid var(--line);
+      background: rgba(15, 20, 28, .58);
+      color: #c7d0dd;
+      border-radius: 999px;
+      padding: 9px 13px;
+      font-size: 13px;
+    }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    .home {
+      min-height: calc(100vh - 78px);
+      display: grid;
+      grid-template-columns: minmax(0, 760px) minmax(420px, 520px);
+      align-items: start;
+      justify-content: center;
+      gap: 128px;
+      padding: 84px 0 72px;
+      text-align: left;
+    }
+
+    .home.active { display: grid; }
+
+    .home-main {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #bfffe0;
+      background: rgba(57, 217, 138, .09);
+      border: 1px solid rgba(57, 217, 138, .22);
+      border-radius: 999px;
+      padding: 8px 11px;
+      font-size: 13px;
+      font-weight: 750;
+      margin: 0 0 20px;
+    }
+
+    .pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 1.8s infinite;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 780px;
+      font-size: clamp(44px, 5.2vw, 72px);
+      line-height: .95;
+      letter-spacing: 0;
+    }
+
+    .copy {
+      max-width: 680px;
+      color: var(--muted);
+      font-size: clamp(17px, 1.8vw, 21px);
+      line-height: 1.55;
+      margin: 24px 0 0;
+    }
+
+    .start-card {
+      margin-top: 32px;
+      border: 1px solid var(--line);
+      background: rgba(15, 20, 28, .78);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px;
+      width: min(760px, 100%);
+      max-width: 760px;
+      text-align: left;
+    }
+
+    .field-label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin: 0 0 8px;
+    }
+
+    .repo-start {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+    }
+
+    .home-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    input, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #0a0e15;
+      color: var(--text);
+      outline: none;
+      border-radius: 7px;
+    }
+
+    input {
+      min-height: 52px;
+      padding: 0 15px;
+    }
+
+    textarea {
+      min-height: 440px;
+      resize: vertical;
+      padding: 16px;
+      line-height: 1.5;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 13px;
+    }
+
+    input:focus, textarea:focus {
+      border-color: rgba(97, 165, 255, .72);
+      box-shadow: 0 0 0 3px rgba(97, 165, 255, .12);
+    }
+
+    .button {
+      min-height: 52px;
+      border: 0;
+      border-radius: 7px;
+      padding: 0 18px;
+      font-weight: 900;
+      background: #283141;
+      color: #8e9bae;
+      transition: transform .18s ease, background .18s ease, color .18s ease;
+    }
+
+    .button.ready {
+      background: var(--accent);
+      color: #02120a;
+    }
+
+    .button.ready:hover { transform: translateY(-1px); }
+
+    .button.secondary {
+      border: 1px solid var(--line);
+      background: #171f2b;
+      color: #c7d0dd;
+    }
+
+    .button:disabled { cursor: wait; }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .chip {
+      border: 1px solid var(--line);
+      background: #0c1119;
+      border-radius: 999px;
+      padding: 7px 10px;
+    }
+
+    .machine-wrap {
+      display: grid;
+      place-items: start center;
+      width: 100%;
+      padding-top: 8px;
+    }
+
+    .machine {
+      position: relative;
+      width: min(520px, 100%);
+      aspect-ratio: 4 / 5;
+      border: 1px solid #344052;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #192231, #0e131c);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .machine::before {
+      content: "";
+      position: absolute;
+      inset: 14px;
+      border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: 7px;
+      pointer-events: none;
+    }
+
+    .machine-title {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      right: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #dce7f5;
+      font-size: 13px;
+      font-weight: 850;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .slot {
+      position: absolute;
+      top: 78px;
+      left: 34px;
+      right: 34px;
+      height: 58px;
+      border-radius: 7px;
+      background: #080c12;
+      border: 1px solid #334154;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      color: var(--muted);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+      overflow: hidden;
+    }
+
+    .ticket {
+      width: min(360px, 100%);
+      height: 30px;
+      border-radius: 6px;
+      border: 1px solid rgba(97, 165, 255, .45);
+      background: rgba(97, 165, 255, .12);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 10px;
+      animation: feed 4s ease-in-out infinite;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    .ticket strong {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .scanner {
+      position: absolute;
+      top: 156px;
+      left: 46px;
+      right: 46px;
+      height: 205px;
+      border-radius: 8px;
+      background: #090d13;
+      border: 1px solid #2b384a;
+      overflow: hidden;
+    }
+
+    .scan-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 16px;
+      height: 2px;
+      background: var(--accent);
+      box-shadow: 0 0 20px rgba(57, 217, 138, .8);
+      animation: scan 2.6s ease-in-out infinite;
+    }
+
+    .code-line {
+      height: 9px;
+      border-radius: 99px;
+      background: #223044;
+      margin: 18px 22px;
+    }
+
+    .code-line.short { width: 46%; }
+    .code-line.mid { width: 68%; }
+    .code-line.good { background: rgba(57, 217, 138, .45); width: 76%; }
+    .code-line.warn { background: rgba(255, 154, 75, .48); width: 56%; }
+
+    .agents {
+      position: absolute;
+      left: 34px;
+      right: 34px;
+      bottom: 38px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .agent-card {
+      border: 1px solid #2d394b;
+      background: #0b1018;
+      border-radius: 7px;
+      padding: 12px;
+      min-height: 94px;
+    }
+
+    .agent-light {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 18px rgba(57, 217, 138, .7);
+      margin-bottom: 10px;
+      animation: blink 1.3s infinite;
+    }
+
+    .agent-card:nth-child(2) .agent-light {
+      background: var(--warn);
+      box-shadow: 0 0 18px rgba(255, 154, 75, .65);
+      animation-delay: .45s;
+    }
+
+    .agent-name {
+      font-size: 12px;
+      font-weight: 900;
+      margin-bottom: 6px;
+    }
+
+    .agent-task {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .review-shell { padding: 18px 0 44px; }
+
+    .review-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 18px;
+      margin: 18px 0;
+    }
+
+    .review-head h2 {
+      margin: 0;
+      font-size: clamp(30px, 4vw, 52px);
+      line-height: 1;
+    }
+
+    .review-head p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      max-width: 680px;
+      line-height: 1.45;
+    }
+
+    .run-strip {
+      display: none;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 0 0 14px;
+    }
+
+    .run-strip.active { display: grid; }
+
+    .run-step {
+      border: 1px solid var(--line);
+      background: rgba(15, 20, 28, .78);
+      border-radius: 8px;
+      padding: 13px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .run-step::after {
+      content: "";
+      position: absolute;
+      left: -40%;
+      top: 0;
+      width: 40%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(57, 217, 138, .16), transparent);
+      animation: sweep 1.35s linear infinite;
+    }
+
+    .run-step strong {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 5px;
+    }
+
+    .run-step span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .context-note {
+      margin: 0 0 14px;
+      border: 1px solid rgba(57, 217, 138, .24);
+      background: rgba(57, 217, 138, .08);
+      color: #c9ffe4;
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: none;
+      line-height: 1.45;
+      font-size: 13px;
+    }
+
+    .context-note.active { display: block; }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(320px, .88fr) minmax(0, 1.12fr) minmax(0, 1.12fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      background: rgba(15, 20, 28, .84);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 18px 60px rgba(0, 0, 0, .22);
+    }
+
+    .panel-head {
+      min-height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 15px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(21, 27, 37, .95);
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 900;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 5px rgba(57, 217, 138, .12);
+      flex: 0 0 auto;
+    }
+
+    .dot.blue { background: var(--blue); box-shadow: 0 0 0 5px rgba(97, 165, 255, .12); }
+    .dot.orange { background: var(--warn); box-shadow: 0 0 0 5px rgba(255, 154, 75, .12); }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .controls {
+      display: grid;
+      gap: 14px;
+      padding: 15px;
+    }
+
+    .actions { display: grid; }
+
+    .result {
+      min-height: 560px;
+      padding: 17px;
+      color: #dfe8f5;
+      line-height: 1.55;
+      overflow: auto;
+    }
+
+    .result h3 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      color: #fff;
+    }
+
+    code {
+      color: #e9f1fb;
+      background: rgba(255, 255, 255, .06);
+      border: 1px solid rgba(255, 255, 255, .08);
+      padding: 1px 5px;
+      border-radius: 5px;
+    }
+
+    pre {
+      margin: 12px 0 0;
+      border: 1px solid var(--line);
+      background: #080c12;
+      border-radius: 7px;
+      padding: 13px;
+      overflow: auto;
+      color: #f3f7fc;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .meta {
+      border-top: 1px solid var(--line);
+      background: rgba(21, 27, 37, .74);
+      color: var(--muted);
+      padding: 13px 15px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .loading .dot { animation: pulse 1.2s infinite; }
+
+    body.launching .home-main {
+      animation: launchLeft .62s ease both;
+    }
+
+    body.launching .machine {
+      animation: machineLaunch .62s ease both;
+    }
+
+    body.launching .ticket {
+      animation: ticketLaunch .62s ease both;
+    }
+
+    .agent-loading {
+      min-height: 260px;
+      display: grid;
+      align-content: center;
+      gap: 16px;
+    }
+
+    .agent-loading-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 900;
+    }
+
+    .agent-spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255, 255, 255, .14);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+
+    .skeleton-lines {
+      display: grid;
+      gap: 11px;
+    }
+
+    .skeleton-line {
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #202b3b, #36465d, #202b3b);
+      background-size: 220% 100%;
+      animation: shimmer 1.2s linear infinite;
+    }
+
+    .skeleton-line:nth-child(2) { width: 72%; }
+    .skeleton-line:nth-child(3) { width: 84%; }
+    .skeleton-line:nth-child(4) { width: 56%; }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(57, 217, 138, .55); }
+      70% { box-shadow: 0 0 0 10px rgba(57, 217, 138, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(57, 217, 138, 0); }
+    }
+
+    @keyframes feed {
+      0%, 100% { transform: translateX(-18px); opacity: .64; }
+      48%, 62% { transform: translateX(58px); opacity: 1; }
+    }
+
+    @keyframes scan {
+      0%, 100% { transform: translateY(0); opacity: .35; }
+      50% { transform: translateY(168px); opacity: 1; }
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: .45; }
+      50% { opacity: 1; }
+    }
+
+    @keyframes sweep {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(360%); }
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @keyframes shimmer {
+      0% { background-position: 0% 50%; }
+      100% { background-position: -220% 50%; }
+    }
+
+    @keyframes launchLeft {
+      0% { opacity: 1; transform: translateX(0); }
+      100% { opacity: 0; transform: translateX(-24px); }
+    }
+
+    @keyframes machineLaunch {
+      0% { transform: scale(1); box-shadow: var(--shadow); }
+      45% { transform: scale(1.025); box-shadow: 0 0 0 1px rgba(57, 217, 138, .35), 0 24px 90px rgba(57, 217, 138, .16); }
+      100% { opacity: 0; transform: translateX(28px) scale(.98); }
+    }
+
+    @keyframes ticketLaunch {
+      0% { transform: translateX(-18px); opacity: .8; }
+      55% { transform: translateX(92px); opacity: 1; }
+      100% { transform: translateX(170px); opacity: 0; }
+    }
+
+    @media (max-width: 1050px) {
+      .home {
+        grid-template-columns: 1fr;
+        align-items: start;
+        gap: 28px;
+        text-align: center;
+      }
+
+      .home-main {
+        align-items: center;
+      }
+
+      .eyebrow {
+        margin: 0 auto 20px;
+      }
+
+      .start-card {
+        width: min(900px, 100%);
+        max-width: 900px;
+      }
+
+      .workspace { grid-template-columns: 1fr; }
+      .machine-wrap { padding-top: 0; }
+      .machine { width: min(500px, 100%); }
+      .result { min-height: 320px; }
+    }
+
+    @media (max-width: 680px) {
+      .shell { width: min(100% - 22px, 1220px); }
+      .nav, .review-head { align-items: stretch; flex-direction: column; }
+      .repo-start, .home-actions, .run-strip { grid-template-columns: 1fr; display: grid; }
+      .ghost { width: 100%; }
+      .home { gap: 28px; padding-top: 28px; }
+      textarea { min-height: 320px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <nav class="nav">
+      <div class="brand">
+        <div class="mark">DA</div>
+        <span>Diff Agents</span>
+      </div>
+      <button class="ghost" id="back-home" type="button">Home</button>
+    </nav>
+
+    <section class="page home active" id="home-page">
+      <div class="home-main">
+        <div class="eyebrow"><span class="pulse"></span>IBM watsonx code agents</div>
+        <h1>Drop in a repo. Get two competing reviews.</h1>
+        <p class="copy">Diff Agents turns a GitHub link and your latest changes into two clean outputs: one agent reviews bugs and edge cases, the other rewrites with better implementation options.</p>
+
+        <div class="start-card">
+          <label class="field-label" for="home-repo-url">GitHub repository URL</label>
+          <div class="repo-start">
+            <input id="home-repo-url" placeholder="https://github.com/owner/repo" autocomplete="off">
+            <div class="home-actions">
+              <button class="button" id="home-start" type="button">Start review</button>
+              <button class="button secondary" id="home-sample" type="button">Use sample repo</button>
+            </div>
+          </div>
+          <div class="chips">
+            <span class="chip">Browser-based workflow</span>
+            <span class="chip">Two agent outputs</span>
+            <span class="chip">Repository-aware review</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="machine-wrap" aria-hidden="true">
+        <div class="machine">
+          <div class="machine-title">
+            <span>Review Machine</span>
+            <span>online</span>
+          </div>
+          <div class="slot">
+            <div class="ticket"><span>repo://</span><strong id="ticket-label">waiting-for-repo</strong></div>
+          </div>
+          <div class="scanner">
+            <div class="scan-line"></div>
+            <div class="code-line mid"></div>
+            <div class="code-line short"></div>
+            <div class="code-line warn"></div>
+            <div class="code-line mid"></div>
+            <div class="code-line good"></div>
+            <div class="code-line short"></div>
+          </div>
+          <div class="agents">
+            <div class="agent-card">
+              <div class="agent-light"></div>
+              <div class="agent-name">Agent 1</div>
+              <div class="agent-task">reviews bugs, edge cases, and risks</div>
+            </div>
+            <div class="agent-card">
+              <div class="agent-light"></div>
+              <div class="agent-name">Agent 2</div>
+              <div class="agent-task">rewrites with cleaner alternatives</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page review-shell" id="review-page">
+      <header class="review-head">
+        <div>
+          <div class="eyebrow"><span class="pulse"></span>Review workspace</div>
+          <h2>Run the agents</h2>
+          <p>Paste a git diff or any code snippet. The agents will review the change and propose a cleaner implementation path.</p>
+        </div>
+        <button class="button secondary" id="change-repo" type="button">Change repo</button>
+      </header>
+
+      <div class="run-strip" id="run-strip">
+        <div class="run-step"><strong>Repository context captured</strong><span id="context-repo-label">Repo and changed files</span></div>
+        <div class="run-step"><strong>Agent 1 reviewing</strong><span>Bugs, risks, edge cases</span></div>
+        <div class="run-step"><strong>Agent 2 rewriting</strong><span>Cleaner implementation paths</span></div>
+      </div>
+
+      <div class="context-note" id="context-note"></div>
+
+      <section class="workspace">
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title"><span class="dot"></span>Original</div>
+            <span class="hint">Input</span>
+          </div>
+          <div class="controls">
+            <div>
+              <label class="field-label" for="repo-url">GitHub repo URL</label>
+              <input id="repo-url" autocomplete="off">
+            </div>
+            <div>
+              <label class="field-label" for="diff-input">Diff or code</label>
+              <textarea id="diff-input" placeholder="Paste git diff, a file, or any code snippet here"></textarea>
+            </div>
+            <div class="actions">
+              <button class="button" id="review-button" type="button">Run agents</button>
+            </div>
+          </div>
+          <div class="meta" id="status-text">Paste code or a git diff, then run the agents.</div>
+        </div>
+
+        <div class="panel" id="review-panel">
+          <div class="panel-head">
+            <div class="panel-title"><span class="dot blue"></span>Agent 1 - Review</div>
+            <span class="hint">bugs and risks</span>
+          </div>
+          <article class="result" id="review-output">
+            <h3>Waiting for input</h3>
+            <p>Agent 1 will look for bugs, edge cases, and concrete fixes once you start a review.</p>
+          </article>
+        </div>
+
+        <div class="panel" id="rewrite-panel">
+          <div class="panel-head">
+            <div class="panel-title"><span class="dot orange"></span>Agent 2 - Rewrite</div>
+            <span class="hint">alternatives</span>
+          </div>
+          <article class="result" id="alternatives-output">
+            <h3>Waiting for input</h3>
+            <p>Agent 2 will suggest cleaner implementations and tradeoffs for your changed code.</p>
+          </article>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const DEFAULT_BACKEND_URL = "https://ham-f-k-ibm-hachathon-submission.hf.space";
+    const SAMPLE_REPO_URL = "https://github.com/Sc-ifix/diff-test-repo";
+    const WAITING_LABEL = "waiting-for-repo";
+    const sampleDiff = `diff --git a/math_utils.py b/math_utils.py
+index 82cb86a..a14f0e7 100644
+--- a/math_utils.py
++++ b/math_utils.py
+@@ -3,3 +3,6 @@ def add(a, b):
+
+ def divide(a, b):
+     return a / b  # missing zero check
++
++def multiply(a, b):
++    return a * b`;
+
+    const homePage = document.querySelector("#home-page");
+    const reviewPage = document.querySelector("#review-page");
+    const homeRepoInput = document.querySelector("#home-repo-url");
+    const homeStart = document.querySelector("#home-start");
+    const homeSample = document.querySelector("#home-sample");
+    const backHome = document.querySelector("#back-home");
+    const changeRepo = document.querySelector("#change-repo");
+    const reviewButton = document.querySelector("#review-button");
+    const repoInput = document.querySelector("#repo-url");
+    const diffInput = document.querySelector("#diff-input");
+    const reviewOutput = document.querySelector("#review-output");
+    const alternativesOutput = document.querySelector("#alternatives-output");
+    const statusText = document.querySelector("#status-text");
+    const runStrip = document.querySelector("#run-strip");
+    const contextNote = document.querySelector("#context-note");
+    const contextRepoLabel = document.querySelector("#context-repo-label");
+    const ticketLabel = document.querySelector("#ticket-label");
+    const reviewPanel = document.querySelector("#review-panel");
+    const rewritePanel = document.querySelector("#rewrite-panel");
+
+    function repoDisplayName(value) {
+      const trimmed = value.trim();
+      if (!trimmed) return WAITING_LABEL;
+      try {
+        const url = new URL(trimmed);
+        const parts = url.pathname.split("/").filter(Boolean);
+        if (parts.length >= 2) return `${parts[0]}/${parts[1]}`;
+      } catch {
+        return trimmed.replace(/^https?:\/\//, "").replace(/^github.com\//, "").slice(0, 48);
+      }
+      return trimmed.replace(/^https?:\/\//, "").slice(0, 48);
+    }
+
+    function syncRepoVisuals(value) {
+      const label = repoDisplayName(value);
+      ticketLabel.textContent = label;
+      contextRepoLabel.textContent = label === WAITING_LABEL ? "Repo and changed files" : `${label} and changed files`;
+      homeStart.classList.toggle("ready", label !== WAITING_LABEL);
+      reviewButton.classList.toggle("ready", label !== WAITING_LABEL && diffInput.value.trim().length > 0);
+    }
+
+    function setRepo(value) {
+      homeRepoInput.value = value;
+      repoInput.value = value;
+      try {
+        localStorage.setItem("diffAgentsRepo", value);
+      } catch {
+        // Local files may block storage in some browsers; the UI still works.
+      }
+      syncRepoVisuals(value);
+    }
+
+    function readSavedRepo() {
+      try {
+        return localStorage.getItem("diffAgentsRepo") || "";
+      } catch {
+        return "";
+      }
+    }
+
+    function setPage(pageName) {
+      const showReview = pageName === "review";
+      homePage.classList.toggle("active", !showReview);
+      reviewPage.classList.toggle("active", showReview);
+      backHome.style.display = showReview ? "inline-flex" : "none";
+    }
+
+    function escapeHtml(value) {
+      return value.replace(/[&<>"']/g, char => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+      }[char]));
+    }
+
+    function markdownLite(text) {
+      const safe = escapeHtml(text || "");
+      return safe
+        .replace(/```([\s\S]*?)```/g, "<pre>$1</pre>")
+        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+        .replace(/^### (.*)$/gm, "<h3>$1</h3>")
+        .replace(/^## (.*)$/gm, "<h3>$1</h3>")
+        .replace(/\n/g, "<br>");
+    }
+
+    function normalizeBackendUrl() {
+      return DEFAULT_BACKEND_URL.replace(/\/$/, "");
+    }
+
+    function showRunningState() {
+      reviewOutput.innerHTML = `
+        <div class="agent-loading">
+          <div class="agent-loading-title"><span class="agent-spinner"></span>Agent 1 is reviewing</div>
+          <div class="skeleton-lines">
+            <div class="skeleton-line"></div><div class="skeleton-line"></div>
+            <div class="skeleton-line"></div><div class="skeleton-line"></div>
+          </div>
+        </div>`;
+      alternativesOutput.innerHTML = `
+        <div class="agent-loading">
+          <div class="agent-loading-title"><span class="agent-spinner"></span>Agent 2 is rewriting</div>
+          <div class="skeleton-lines">
+            <div class="skeleton-line"></div><div class="skeleton-line"></div>
+            <div class="skeleton-line"></div><div class="skeleton-line"></div>
+          </div>
+        </div>`;
+    }
+
+    async function fetchWithTimeout(url, options = {}, timeoutMs = 150000) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        return await fetch(url, { ...options, signal: controller.signal });
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    async function callGradioEndpoint(backend, endpoint, repoUrl, diffText) {
+      const response = await fetchWithTimeout(`${backend}/gradio_api/call/${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: [repoUrl, diffText] })
+      });
+      if (!response.ok) throw new Error(`Gradio endpoint ${endpoint} failed: ${response.status}`);
+      const event = await response.json();
+      const eventResponse = await fetchWithTimeout(`${backend}/gradio_api/call/${endpoint}/${event.event_id}`, {}, 150000);
+      if (!eventResponse.ok) throw new Error(`Gradio event failed: ${eventResponse.status}`);
+      const raw = await eventResponse.text();
+      const dataLine = raw.split("\n").reverse().find(line => line.startsWith("data: "));
+      if (!dataLine) throw new Error("No Gradio response data found");
+      return JSON.parse(dataLine.slice(6));
+    }
+
+    async function callGradio(backend, repoUrl, diffText) {
+      try {
+        return await callGradioEndpoint(backend, "run_pipeline", repoUrl, diffText);
+      } catch (error) {
+        if (!String(error.message).includes("404")) throw error;
+        return callGradioEndpoint(backend, "predict", repoUrl, diffText);
+      }
+    }
+
+    homeRepoInput.addEventListener("input", () => setRepo(homeRepoInput.value));
+    homeRepoInput.addEventListener("change", () => setRepo(homeRepoInput.value));
+    homeRepoInput.addEventListener("paste", () => requestAnimationFrame(() => setRepo(homeRepoInput.value)));
+
+    repoInput.addEventListener("input", () => setRepo(repoInput.value));
+    repoInput.addEventListener("change", () => setRepo(repoInput.value));
+    repoInput.addEventListener("paste", () => requestAnimationFrame(() => setRepo(repoInput.value)));
+    diffInput.addEventListener("input", () => syncRepoVisuals(repoInput.value));
+
+    homeStart.addEventListener("click", () => {
+      const repo = homeRepoInput.value.trim();
+      if (!repo) {
+        homeRepoInput.focus();
+        return;
+      }
+      setRepo(repo);
+      document.body.classList.add("launching");
+      homeStart.disabled = true;
+      homeStart.textContent = "Opening review...";
+      setTimeout(() => {
+        document.body.classList.remove("launching");
+        homeStart.disabled = false;
+        homeStart.textContent = "Start review";
+        setPage("review");
+        statusText.textContent = `Repo loaded: ${repoDisplayName(repo)}. Paste a diff or code snippet to enable the agents.`;
+        diffInput.focus();
+      }, 620);
+    });
+
+    homeSample.addEventListener("click", () => {
+      setRepo(SAMPLE_REPO_URL);
+      diffInput.value = sampleDiff;
+      syncRepoVisuals(SAMPLE_REPO_URL);
+      setPage("review");
+      statusText.textContent = "Sample repository loaded. Run agents to review the sample diff.";
+    });
+
+    backHome.addEventListener("click", () => setPage("home"));
+    changeRepo.addEventListener("click", () => setPage("home"));
+
+    reviewButton.addEventListener("click", async () => {
+      const backend = normalizeBackendUrl();
+      const repoUrl = repoInput.value.trim();
+      const diffText = diffInput.value.trim();
+      const repoLabel = repoDisplayName(repoUrl);
+
+      if (!repoUrl) {
+        statusText.textContent = "Add a GitHub repo URL before running the agents.";
+        repoInput.focus();
+        return;
+      }
+
+      if (!diffText) {
+        statusText.textContent = "Paste a diff or code snippet before running the agents.";
+        diffInput.focus();
+        return;
+      }
+
+      reviewButton.disabled = true;
+      reviewButton.textContent = "Agents running...";
+      statusText.textContent = `Repository context captured from ${repoLabel}. Agents are reading the changed code.`;
+      contextNote.textContent = `Repo context captured: ${repoLabel}. The backend clones the repository, reads the file tree and changed files, then sends that context with your diff to the agents.`;
+      contextNote.classList.add("active");
+      runStrip.classList.add("active");
+      reviewPanel.classList.add("loading");
+      rewritePanel.classList.add("loading");
+      showRunningState();
+
+      try {
+        const result = await callGradio(backend, repoUrl, diffText);
+        reviewOutput.innerHTML = markdownLite(result[0] || "No review returned.");
+        alternativesOutput.innerHTML = markdownLite(result[1] || "No rewrite returned.");
+        statusText.textContent = result[2] || "Review complete.";
+      } catch (error) {
+        statusText.textContent = error.message === "Failed to fetch"
+          ? "Could not reach the agent backend from this browser. This is usually CORS or an expired Gradio public URL."
+          : `Could not connect to backend yet: ${error.message}.`;
+      } finally {
+        reviewButton.disabled = false;
+        reviewButton.textContent = "Run agents";
+        syncRepoVisuals(repoInput.value);
+        runStrip.classList.remove("active");
+        reviewPanel.classList.remove("loading");
+        rewritePanel.classList.remove("loading");
+      }
+    });
+
+    setPage("home");
+    setRepo(readSavedRepo());
+  </script>
+</body>
+</html>
